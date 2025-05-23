@@ -65,36 +65,48 @@ export const TaskForm = ({ task, onClose }: TaskFormProps) => {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{task ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto border-2 border-primary/30 shadow-2xl rounded-2xl bg-white">
+        <DialogHeader className="mb-2">
+          <DialogTitle className="text-2xl font-bold text-primary">
+            {task ? 'Edit Task' : 'Add New Task'}
+          </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title" className="font-semibold">Title</Label>
             <Input
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              onChange={(e) =>
+                setFormData(prev => ({ ...prev, title: e.target.value }))
+              }
               required
             />
           </div>
-
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="font-semibold">Description</Label>
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) =>
+                setFormData(prev => ({ ...prev, description: e.target.value }))
+              }
               rows={3}
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="type">Type</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value }))}>
+              <Label htmlFor="type" className="font-semibold">Type</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) =>
+                  setFormData(prev => ({
+                    ...prev,
+                    type: value as Task['type'],
+                  }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -108,10 +120,17 @@ export const TaskForm = ({ task, onClose }: TaskFormProps) => {
                 </SelectContent>
               </Select>
             </div>
-
             <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}>
+              <Label htmlFor="priority" className="font-semibold">Priority</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={(value) =>
+                  setFormData(prev => ({
+                    ...prev,
+                    priority: value as Task['priority'],
+                  }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -124,10 +143,17 @@ export const TaskForm = ({ task, onClose }: TaskFormProps) => {
               </Select>
             </div>
           </div>
-
           <div>
-            <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+            <Label htmlFor="status" className="font-semibold">Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value) =>
+                setFormData(prev => ({
+                  ...prev,
+                  status: value as Task['status'],
+                }))
+              }
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -139,33 +165,42 @@ export const TaskForm = ({ task, onClose }: TaskFormProps) => {
               </SelectContent>
             </Select>
           </div>
-
           <div>
-            <Label htmlFor="dueDate">Due Date</Label>
+            <Label htmlFor="dueDate" className="font-semibold">Due Date</Label>
             <Input
               id="dueDate"
               type="date"
               value={formData.dueDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+              onChange={(e) =>
+                setFormData(prev => ({ ...prev, dueDate: e.target.value }))
+              }
               required
             />
           </div>
-
           <div>
-            <Label htmlFor="assignedTo">Assigned To</Label>
+            <Label htmlFor="assignedTo" className="font-semibold">Assigned To</Label>
             <Input
               id="assignedTo"
               value={formData.assignedTo}
-              onChange={(e) => setFormData(prev => ({ ...prev, assignedTo: e.target.value }))}
+              onChange={(e) =>
+                setFormData(prev => ({
+                  ...prev,
+                  assignedTo: e.target.value,
+                }))
+              }
               placeholder="Team member name"
             />
           </div>
-
-          <div className="flex space-x-2">
-            <Button type="submit" className="flex-1">
+          <div className="flex space-x-2 mt-2">
+            <Button type="submit" className="flex-1 py-2 text-base font-medium rounded-lg shadow-md hover:scale-105 transition">
               {task ? 'Update Task' : 'Add Task'}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 py-2 text-base font-medium rounded-lg border-gray-300"
+              onClick={onClose}
+            >
               Cancel
             </Button>
           </div>

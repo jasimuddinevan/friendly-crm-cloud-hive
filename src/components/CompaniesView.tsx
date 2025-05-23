@@ -76,30 +76,35 @@ export const CompaniesView = ({ companies, searchTerm, onDataUpdate }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Companies</h1>
-        <Button onClick={() => setShowForm(true)} className="flex items-center space-x-2">
-          <Plus size={16} />
+    <div className="space-y-8 px-1 pb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-primary mb-1">Companies</h1>
+        <Button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-2 px-5 py-2 text-base font-semibold rounded-lg shadow-lg bg-primary text-white hover:bg-primary/90 transition"
+        >
+          <Plus size={20} />
           <span>Add Company</span>
         </Button>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
         {filteredCompanies.map((company) => (
-          <Card key={company.id} className="hover:shadow-lg transition-shadow">
+          <Card key={company.id} className="hover:shadow-xl transition-shadow border-2 border-primary/10 bg-white">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">{company.name}</CardTitle>
-                  <p className="text-sm text-gray-600">{company.industry}</p>
+                  <CardTitle className="text-lg font-bold text-gray-900">{company.name}</CardTitle>
+                  <p className="text-xs text-gray-500">{company.industry}</p>
                 </div>
-                <Badge variant={getStatusColor(company.status)}>
+                <Badge
+                  variant={getStatusColor(company.status)}
+                  className="px-3 py-1 rounded-full text-xs tracking-wide font-bold uppercase"
+                >
                   {company.status}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 mt-1">
               <div className="space-y-2">
                 {company.website && (
                   <div className="flex items-center space-x-2 text-sm">
@@ -118,7 +123,7 @@ export const CompaniesView = ({ companies, searchTerm, onDataUpdate }) => {
                 {company.email && (
                   <div className="flex items-center space-x-2 text-sm">
                     <Mail size={14} className="text-gray-400" />
-                    <span>{company.email}</span>
+                    <span className="font-medium">{company.email}</span>
                   </div>
                 )}
                 
@@ -141,20 +146,18 @@ export const CompaniesView = ({ companies, searchTerm, onDataUpdate }) => {
                   <span>{company.employees ? `${company.employees} employees` : company.size}</span>
                 </div>
               </div>
-
               {company.revenue > 0 && (
-                <div className="text-sm bg-blue-50 p-2 rounded">
-                  <span className="font-medium">Revenue: </span>
+                <div className="text-sm bg-blue-50 p-2 rounded font-medium border">
+                  <span className="font-semibold">Revenue: </span>
                   ${company.revenue.toLocaleString()}
                 </div>
               )}
-
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleEdit(company)}
-                  className="flex-1"
+                  className="flex-1 border border-primary font-semibold"
                 >
                   <Edit size={14} className="mr-1" />
                   Edit
@@ -163,29 +166,30 @@ export const CompaniesView = ({ companies, searchTerm, onDataUpdate }) => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleDelete(company.id)}
-                  className="text-red-600 hover:text-red-700"
+                  className="text-red-600 hover:text-red-700 border border-red-300"
+                  title="Delete"
                 >
                   <Trash2 size={14} />
                 </Button>
               </div>
-
               {company.notes && (
-                <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                  {company.notes.substring(0, 100)}
-                  {company.notes.length > 100 && '...'}
+                <div className="text-xs text-gray-700 bg-gray-50 p-2 rounded border">
+                  {company.notes.length > 100
+                    ? company.notes.substring(0, 100) + '...'
+                    : company.notes}
                 </div>
               )}
             </CardContent>
           </Card>
         ))}
       </div>
-
       {filteredCompanies.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No companies found. Add your first company to get started!</p>
+          <p className="text-lg text-gray-400 font-medium">
+            No companies found. Add your first company to get started!
+          </p>
         </div>
       )}
-
       {showForm && (
         <CompanyForm
           company={editingCompany}
