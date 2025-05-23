@@ -64,16 +64,21 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation 
         activeView={activeView} 
         setActiveView={setActiveView}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
       />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 flex-1 w-full">
         {renderActiveView()}
       </main>
+      <footer className="w-full text-center py-4 bg-transparent mt-auto">
+        <span className="text-gray-800 text-sm opacity-60 tracking-wide select-none">
+          &copy; {new Date().getFullYear()} Jasim Uddin. All rights reserved.
+        </span>
+      </footer>
     </div>
   );
 };
