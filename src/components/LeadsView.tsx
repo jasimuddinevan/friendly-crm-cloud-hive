@@ -14,13 +14,13 @@ interface LeadsViewProps {
   onDataUpdate: () => void;
 }
 
-export const LeadsView = ({ leads, searchTerm, onDataUpdate }: LeadsViewProps) => {
+export const LeadsView = ({ leads, searchTerm, onDataUpdate }) => {
   const [showForm, setShowForm] = useState(false);
-  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [editingLead, setEditingLead] = useState(null);
 
   // "Hit Enter" to add
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    (e) => {
       if (
         e.key === 'Enter'
         && !showForm

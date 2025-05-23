@@ -32,7 +32,7 @@ export const LeadForm = ({ lead, onClose }: LeadFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const leadData: Lead = {
       id: lead?.id || crypto.randomUUID(),
       name: formData.name,

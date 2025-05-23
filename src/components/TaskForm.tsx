@@ -30,7 +30,7 @@ export const TaskForm = ({ task, onClose }: TaskFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const taskData: Task = {
       id: task?.id || crypto.randomUUID(),
       title: formData.title,

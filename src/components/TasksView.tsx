@@ -14,13 +14,13 @@ interface TasksViewProps {
   onDataUpdate: () => void;
 }
 
-export const TasksView = ({ tasks, searchTerm, onDataUpdate }: TasksViewProps) => {
+export const TasksView = ({ tasks, searchTerm, onDataUpdate }) => {
   const [showForm, setShowForm] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState(null);
 
   // "Hit Enter" to add
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    (e) => {
       if (
         e.key === 'Enter'
         && !showForm

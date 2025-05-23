@@ -1,8 +1,12 @@
+
 import { useState } from 'react';
 import { StorageService } from '../services/StorageService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { Download, FileText, Upload, AlertTriangle, Trash2, Database } from 'lucide-react';
 
 // Helper to convert array to CSV
 function arrayToCSV(arr: any[]): string {
@@ -17,9 +21,8 @@ function arrayToCSV(arr: any[]): string {
 
 // Helper to push to Google Sheets via Script URL
 async function pushToGoogleSheet(sheetUrl: string, data: {contacts: any[]; leads: any[]; tasks: any[]; companies: any[]}) {
-  // Google Apps Script expects a POST with { csv_contacts, csv_leads, csv_tasks, csv_companies }
   try {
-    const res = await fetch(sheetUrl, {
+    await fetch(sheetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -63,7 +66,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Data exported",
         description: "Your CRM data has been downloaded as a JSON file.",
@@ -132,7 +135,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     const leads = StorageService.getLeads();
     const tasks = StorageService.getTasks();
     const companies = StorageService.getCompanies();
-    
+
     return {
       contacts: contacts.length,
       leads: leads.length,
@@ -140,6 +143,28 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
       companies: companies.length,
       total: contacts.length + leads.length + tasks.length + companies.length
     };
+  };
+
+  const handlePush = async () => {
+    if (!googleSheetUrl) {
+      toast({
+        title: "No URL provided",
+        description: "Please enter your public Google Apps Script URL.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setIsPushing(true);
+
+    const data = {
+      contacts: StorageService.getContacts(),
+      leads: StorageService.getLeads(),
+      tasks: StorageService.getTasks(),
+      companies: StorageService.getCompanies(),
+    };
+
+    await pushToGoogleSheet(googleSheetUrl, data);
+    setIsPushing(false);
   };
 
   const stats = getStorageStats();
@@ -217,7 +242,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
             <p className="text-sm text-gray-600">
               Import CRM data from a JSON file. This will add to your existing data.
             </p>
-            
+
             <div>
               <Label htmlFor="file-import">Upload JSON File</Label>
               <Input
@@ -304,7 +329,6 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
               onChange={e => setGoogleSheetUrl(e.target.value)}
               placeholder="Paste your Google Apps Script POST endpoint"
               className="w-full border px-2 py-1 rounded"
-              autoFocus={false}
             />
             <div className="text-xs text-gray-500 mb-2">
               <span>
@@ -321,3 +345,4 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     </div>
   );
 };
+

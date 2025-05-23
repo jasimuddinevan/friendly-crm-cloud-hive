@@ -14,13 +14,13 @@ interface CompaniesViewProps {
   onDataUpdate: () => void;
 }
 
-export const CompaniesView = ({ companies, searchTerm, onDataUpdate }: CompaniesViewProps) => {
+export const CompaniesView = ({ companies, searchTerm, onDataUpdate }) => {
   const [showForm, setShowForm] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [editingCompany, setEditingCompany] = useState(null);
 
   // "Hit Enter" to add
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    (e) => {
       if (
         e.key === 'Enter'
         && !showForm

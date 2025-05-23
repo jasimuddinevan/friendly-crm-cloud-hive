@@ -32,7 +32,7 @@ export const ContactForm = ({ contact, onClose }: ContactFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const contactData: Contact = {
       id: contact?.id || crypto.randomUUID(),
       firstName: formData.firstName,

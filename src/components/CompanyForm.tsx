@@ -36,7 +36,7 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const companyData: Company = {
       id: company?.id || crypto.randomUUID(),
       name: formData.name,
