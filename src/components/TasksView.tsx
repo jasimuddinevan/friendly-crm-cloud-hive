@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Task } from '../types/crm';
 import { StorageService } from '../services/StorageService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +17,25 @@ interface TasksViewProps {
 export const TasksView = ({ tasks, searchTerm, onDataUpdate }: TasksViewProps) => {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // "Hit Enter" to add
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (
+        e.key === 'Enter'
+        && !showForm
+        && (document.activeElement?.tagName === 'BODY' || document.activeElement === document.body)
+      ) {
+        setShowForm(true);
+      }
+    },
+    [showForm]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const filteredTasks = tasks.filter(task =>
     task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

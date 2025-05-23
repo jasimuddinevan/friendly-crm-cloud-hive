@@ -1,12 +1,46 @@
-
 import { useState } from 'react';
 import { StorageService } from '../services/StorageService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Download, Upload, Trash2, Database, FileText, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+
+// Helper to convert array to CSV
+function arrayToCSV(arr: any[]): string {
+  if (!arr.length) return '';
+  const keys = Object.keys(arr[0]);
+  const lines = [keys.join(',')];
+  for (const obj of arr) {
+    lines.push(keys.map(k => `"${(obj[k] ?? '').toString().replace(/"/g, '""')}"`).join(','));
+  }
+  return lines.join('\r\n');
+}
+
+// Helper to push to Google Sheets via Script URL
+async function pushToGoogleSheet(sheetUrl: string, data: {contacts: any[]; leads: any[]; tasks: any[]; companies: any[]}) {
+  // Google Apps Script expects a POST with { csv_contacts, csv_leads, csv_tasks, csv_companies }
+  try {
+    const res = await fetch(sheetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        csv_contacts: arrayToCSV(data.contacts),
+        csv_leads: arrayToCSV(data.leads),
+        csv_tasks: arrayToCSV(data.tasks),
+        csv_companies: arrayToCSV(data.companies)
+      })
+    });
+    toast({
+      title: 'Cloud Push Completed',
+      description: 'Data sent to Google Sheet. Check your sheet for updates.',
+    });
+  } catch (err) {
+    toast({
+      title: 'Cloud Push failed',
+      description: 'Failed to push data to Google Sheet. Check the link and try again.',
+      variant: "destructive",
+    });
+  }
+}
 
 interface DataManagerProps {
   onDataUpdate: () => void;
@@ -14,6 +48,8 @@ interface DataManagerProps {
 
 export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
   const [importData, setImportData] = useState('');
+  const [googleSheetUrl, setGoogleSheetUrl] = useState<string>('');
+  const [isPushing, setIsPushing] = useState(false);
 
   const handleExport = () => {
     try {
@@ -109,7 +145,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
   const stats = getStorageStats();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Data Manager</h1>
         <p className="text-gray-600">Import, export, and manage your CRM data</p>
@@ -250,6 +286,35 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
             <p><strong>Import Format:</strong> JSON file with the same structure as exported data</p>
             <p><strong>Storage:</strong> All data is stored locally in your browser's localStorage</p>
             <p><strong>Backup:</strong> Regular exports are recommended to prevent data loss</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cloud Push (Google Sheet) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Cloud Push (Google Sheet)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 mb-4">
+            <label className="block font-medium mb-1">Public Google Apps Script URL</label>
+            <input
+              type="text"
+              value={googleSheetUrl}
+              onChange={e => setGoogleSheetUrl(e.target.value)}
+              placeholder="Paste your Google Apps Script POST endpoint"
+              className="w-full border px-2 py-1 rounded"
+              autoFocus={false}
+            />
+            <div className="text-xs text-gray-500 mb-2">
+              <span>
+                <b>Instructions:</b> Create a Google Sheet, set up a Google Apps Script Web App that accepts POST and writes CSV to the sheet. Paste the script's public endpoint here.<br/>
+                <b>Note:</b> The script must parse the csv_contacts, etc. See documentation for a ready script.
+              </span>
+            </div>
+            <Button onClick={handlePush} disabled={isPushing} className="w-full">
+              {isPushing ? "Pushing..." : "Push to Google Sheet"}
+            </Button>
           </div>
         </CardContent>
       </Card>
