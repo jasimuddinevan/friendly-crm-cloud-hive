@@ -1,41 +1,32 @@
 
 import { StorageService } from './StorageService';
-import { GoogleSheetsService } from './GoogleSheetsService';
+import { GoogleSheetsAuthService, AuthenticatedSyncConfig } from './GoogleSheetsAuthService';
 import { Contact, Lead, Task, Company } from '../types/crm';
 
-export interface SyncConfig {
-  sheetUrl: string;
-  isEnabled: boolean;
-  lastSync: string;
-  syncInterval: number; // minutes
-}
-
 export class CloudSyncService {
-  private static SYNC_CONFIG_KEY = 'crm_sync_config';
   private static syncInterval: NodeJS.Timeout | null = null;
 
-  static getSyncConfig(): SyncConfig | null {
-    const config = localStorage.getItem(this.SYNC_CONFIG_KEY);
-    return config ? JSON.parse(config) : null;
+  static getSyncConfig(): AuthenticatedSyncConfig | null {
+    return GoogleSheetsAuthService.getSyncConfig();
   }
 
-  static saveSyncConfig(config: SyncConfig): void {
-    localStorage.setItem(this.SYNC_CONFIG_KEY, JSON.stringify(config));
-  }
-
-  static async enableSync(sheetUrl: string): Promise<void> {
+  static async enableSync(): Promise<void> {
     try {
-      // Test the connection first by doing an initial sync
-      await this.syncToSheet(sheetUrl);
+      // Authenticate and set up Google Sheets
+      const { user, spreadsheetId } = await GoogleSheetsAuthService.setupAuthentication();
       
-      const config: SyncConfig = {
-        sheetUrl,
+      // Do initial sync
+      await this.performSync(spreadsheetId);
+      
+      const config: AuthenticatedSyncConfig = {
+        spreadsheetId,
         isEnabled: true,
         lastSync: new Date().toISOString(),
-        syncInterval: 3 // 3 minutes
+        syncInterval: 3, // 3 minutes
+        user
       };
       
-      this.saveSyncConfig(config);
+      GoogleSheetsAuthService.saveSyncConfig(config);
       this.startAutoSync();
       
       console.log('Cloud sync enabled successfully');
@@ -45,14 +36,15 @@ export class CloudSyncService {
     }
   }
 
-  static disableSync(): void {
+  static async disableSync(): Promise<void> {
     const config = this.getSyncConfig();
     if (config) {
       config.isEnabled = false;
-      this.saveSyncConfig(config);
+      GoogleSheetsAuthService.saveSyncConfig(config);
     }
     
     this.stopAutoSync();
+    await GoogleSheetsAuthService.signOut();
     console.log('Cloud sync disabled');
   }
 
@@ -64,9 +56,9 @@ export class CloudSyncService {
     
     this.syncInterval = setInterval(async () => {
       try {
-        await this.syncToSheet(config.sheetUrl);
+        await this.performSync(config.spreadsheetId);
         config.lastSync = new Date().toISOString();
-        this.saveSyncConfig(config);
+        GoogleSheetsAuthService.saveSyncConfig(config);
         console.log('Auto sync completed:', new Date().toISOString());
       } catch (error) {
         console.error('Auto sync failed:', error);
@@ -83,7 +75,7 @@ export class CloudSyncService {
     }
   }
 
-  private static async syncToSheet(sheetUrl: string): Promise<void> {
+  private static async performSync(spreadsheetId: string): Promise<void> {
     try {
       const data = {
         contacts: StorageService.getContacts(),
@@ -92,8 +84,8 @@ export class CloudSyncService {
         companies: StorageService.getCompanies()
       };
 
-      console.log('Attempting to sync data to sheet:', {
-        url: sheetUrl,
+      console.log('Performing sync to Google Sheets:', {
+        spreadsheetId,
         contacts: data.contacts.length,
         leads: data.leads.length,
         tasks: data.tasks.length,
@@ -101,14 +93,22 @@ export class CloudSyncService {
         timestamp: new Date().toISOString()
       });
 
-      // Use GoogleSheetsService to export data to the sheet
-      await GoogleSheetsService.exportToSheet(sheetUrl, data);
+      await GoogleSheetsAuthService.syncDataToSheets(data);
       
       console.log('Successfully synced data to Google Sheets');
     } catch (error) {
       console.error('Failed to sync to sheet:', error);
       throw error;
     }
+  }
+
+  static async importFromSheets(): Promise<{
+    contacts: Contact[];
+    leads: Lead[];
+    tasks: Task[];
+    companies: Company[];
+  }> {
+    return await GoogleSheetsAuthService.importDataFromSheets();
   }
 
   static initializeSync(): void {

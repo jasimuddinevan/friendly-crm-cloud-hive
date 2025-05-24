@@ -17,7 +17,6 @@ interface DataManagerProps {
 export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
   const [importData, setImportData] = useState('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState<string>('');
-  const [syncSheetUrl, setSyncSheetUrl] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -277,26 +276,17 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
   };
 
   const handleEnableSync = async () => {
-    if (!syncSheetUrl.trim()) {
-      toast({
-        title: "No URL provided",
-        description: "Please enter your Google Sheets URL for syncing.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsSyncing(true);
     try {
-      await CloudSyncService.enableSync(syncSheetUrl);
+      await CloudSyncService.enableSync();
       toast({
         title: "Cloud sync enabled",
-        description: "Your data will now be automatically synced to Google Sheets every 3 minutes.",
+        description: "Successfully authenticated with Google and created your sync spreadsheet. Data will now be automatically synced every 3 minutes.",
       });
     } catch (error) {
       toast({
-        title: "Sync setup failed",
-        description: "Failed to set up cloud sync. Please check your sheet URL and permissions.",
+        title: "Authentication failed",
+        description: "Failed to authenticate with Google. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -304,12 +294,92 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     }
   };
 
-  const handleDisableSync = () => {
-    CloudSyncService.disableSync();
-    toast({
-      title: "Cloud sync disabled",
-      description: "Automatic syncing has been turned off.",
-    });
+  const handleDisableSync = async () => {
+    try {
+      await CloudSyncService.disableSync();
+      toast({
+        title: "Cloud sync disabled",
+        description: "Automatic syncing has been turned off and you have been signed out.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to disable sync properly.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleImportFromSync = async () => {
+    if (!syncConfig) {
+      toast({
+        title: "No sync configured",
+        description: "Please enable cloud sync first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const data = await CloudSyncService.importFromSheets();
+      
+      // Get existing data
+      const existingContacts = StorageService.getContacts();
+      const existingLeads = StorageService.getLeads();
+      const existingTasks = StorageService.getTasks();
+      const existingCompanies = StorageService.getCompanies();
+
+      // Merge new data with existing data, avoiding duplicates
+      let addedCount = 0;
+      
+      if (data.contacts.length > 0) {
+        const newContacts = data.contacts.filter(newContact => 
+          !existingContacts.some(existing => existing.id === newContact.id)
+        );
+        StorageService.saveContacts([...existingContacts, ...newContacts]);
+        addedCount += newContacts.length;
+      }
+      
+      if (data.leads.length > 0) {
+        const newLeads = data.leads.filter(newLead => 
+          !existingLeads.some(existing => existing.id === newLead.id)
+        );
+        StorageService.saveLeads([...existingLeads, ...newLeads]);
+        addedCount += newLeads.length;
+      }
+      
+      if (data.tasks.length > 0) {
+        const newTasks = data.tasks.filter(newTask => 
+          !existingTasks.some(existing => existing.id === newTask.id)
+        );
+        StorageService.saveTasks([...existingTasks, ...newTasks]);
+        addedCount += newTasks.length;
+      }
+      
+      if (data.companies.length > 0) {
+        const newCompanies = data.companies.filter(newCompany => 
+          !existingCompanies.some(existing => existing.id === newCompany.id)
+        );
+        StorageService.saveCompanies([...existingCompanies, ...newCompanies]);
+        addedCount += newCompanies.length;
+      }
+      
+      onDataUpdate();
+      
+      toast({
+        title: "Import successful",
+        description: `Added ${addedCount} new records from your synced Google Sheet.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: "Failed to import from your synced Google Sheet.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -397,12 +467,12 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
         </CardContent>
       </Card>
 
-      {/* Cloud Sync */}
+      {/* Authenticated Cloud Sync */}
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 text-blue-700">
             {syncConfig?.isEnabled ? <Cloud className="h-5 w-5" /> : <CloudOff className="h-5 w-5" />}
-            <span>Cloud Sync</span>
+            <span>Google Cloud Sync</span>
             {syncConfig?.isEnabled && (
               <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded">Active</span>
             )}
@@ -411,57 +481,55 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
         <CardContent className="space-y-4">
           <p className="text-sm text-blue-700">
             {syncConfig?.isEnabled 
-              ? `Auto-sync is enabled. Data syncs every ${syncConfig.syncInterval} minutes to your Google Sheet.`
-              : "Enable automatic backup to Google Sheets. Your data will be synced every 3 minutes."
+              ? `Auto-sync is enabled for ${syncConfig.user.name} (${syncConfig.user.email}). Data syncs every ${syncConfig.syncInterval} minutes to your Google Sheet.`
+              : "Enable automatic backup to Google Sheets with one-click authentication. Your data will be synced every 3 minutes."
             }
           </p>
           
           {syncConfig?.isEnabled ? (
             <div className="space-y-3">
               <div className="text-sm text-gray-600">
-                <p><strong>Sheet URL:</strong> {syncConfig.sheetUrl}</p>
+                <p><strong>Spreadsheet ID:</strong> {syncConfig.spreadsheetId}</p>
                 <p><strong>Last Sync:</strong> {new Date(syncConfig.lastSync).toLocaleString()}</p>
+                <p><strong>User:</strong> {syncConfig.user.name} ({syncConfig.user.email})</p>
               </div>
-              <Button onClick={handleDisableSync} variant="outline" className="w-full">
-                Disable Cloud Sync
-              </Button>
+              <div className="flex space-x-2">
+                <Button onClick={handleImportFromSync} variant="outline" disabled={isImporting}>
+                  {isImporting ? "Importing..." : "Import from Synced Sheet"}
+                </Button>
+                <Button onClick={handleDisableSync} variant="outline">
+                  Disable Cloud Sync
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
-              <div>
-                <Label htmlFor="sync-url">Google Sheets URL for Sync</Label>
-                <Input
-                  id="sync-url"
-                  type="url"
-                  value={syncSheetUrl}
-                  onChange={(e) => setSyncSheetUrl(e.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/your-sheet-id..."
-                  className="mt-1"
-                />
-              </div>
+              <p className="text-sm text-blue-600">
+                Click below to authenticate with Google and automatically create a new spreadsheet for your CRM data.
+              </p>
               <Button 
                 onClick={handleEnableSync} 
-                disabled={isSyncing || !syncSheetUrl.trim()}
+                disabled={isSyncing}
                 className="w-full"
               >
-                {isSyncing ? "Setting up..." : "Enable Cloud Sync"}
+                {isSyncing ? "Authenticating..." : "🔗 Connect Google Account & Enable Sync"}
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Google Sheets Integration */}
+      {/* Manual Google Sheets Import (for existing sheets) */}
       <Card className="border-green-200 bg-green-50">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 text-green-700">
             <Sheet className="h-5 w-5" />
-            <span>Google Sheets Import</span>
+            <span>Manual Google Sheets Import</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-green-700">
-            Import data directly from your Google Sheets. Data will be added to existing records without removing anything.
+            Import data from an existing Google Sheet (different from your synced sheet). Data will be added to existing records.
           </p>
           
           <div className="space-y-3">
