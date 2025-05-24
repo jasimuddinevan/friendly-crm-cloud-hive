@@ -23,7 +23,7 @@ export const ContactForm = ({ contact, onClose }: ContactFormProps) => {
     phone: contact?.phone || '',
     company: contact?.company || '',
     position: contact?.position || '',
-    status: contact?.status || 'active',
+    status: contact?.status || 'active' as Contact['status'],
     tags: contact?.tags.join(', ') || '',
     notes: contact?.notes || '',
     source: contact?.source || '',
@@ -41,7 +41,7 @@ export const ContactForm = ({ contact, onClose }: ContactFormProps) => {
       phone: formData.phone,
       company: formData.company,
       position: formData.position,
-      status: formData.status as Contact['status'],
+      status: formData.status,
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
       notes: formData.notes,
       source: formData.source,
@@ -136,7 +136,7 @@ export const ContactForm = ({ contact, onClose }: ContactFormProps) => {
 
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+            <Select value={formData.status} onValueChange={(value: Contact['status']) => setFormData(prev => ({ ...prev, status: value }))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

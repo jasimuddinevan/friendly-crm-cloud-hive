@@ -1,49 +1,13 @@
 
 import { useState } from 'react';
 import { StorageService } from '../services/StorageService';
+import { GoogleSheetsService } from '../services/GoogleSheetsService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { Download, FileText, Upload, AlertTriangle, Trash2, Database } from 'lucide-react';
-
-// Helper to convert array to CSV
-function arrayToCSV(arr: any[]): string {
-  if (!arr.length) return '';
-  const keys = Object.keys(arr[0]);
-  const lines = [keys.join(',')];
-  for (const obj of arr) {
-    lines.push(keys.map(k => `"${(obj[k] ?? '').toString().replace(/"/g, '""')}"`).join(','));
-  }
-  return lines.join('\r\n');
-}
-
-// Helper to push to Google Sheets via Script URL
-async function pushToGoogleSheet(sheetUrl: string, data: {contacts: any[]; leads: any[]; tasks: any[]; companies: any[]}) {
-  try {
-    await fetch(sheetUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        csv_contacts: arrayToCSV(data.contacts),
-        csv_leads: arrayToCSV(data.leads),
-        csv_tasks: arrayToCSV(data.tasks),
-        csv_companies: arrayToCSV(data.companies)
-      })
-    });
-    toast({
-      title: 'Cloud Push Completed',
-      description: 'Data sent to Google Sheet. Check your sheet for updates.',
-    });
-  } catch (err) {
-    toast({
-      title: 'Cloud Push failed',
-      description: 'Failed to push data to Google Sheet. Check the link and try again.',
-      variant: "destructive",
-    });
-  }
-}
+import { Download, FileText, Upload, AlertTriangle, Trash2, Database, Sheet, Info } from 'lucide-react';
 
 interface DataManagerProps {
   onDataUpdate: () => void;
@@ -52,7 +16,8 @@ interface DataManagerProps {
 export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
   const [importData, setImportData] = useState('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState<string>('');
-  const [isPushing, setIsPushing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const handleExport = () => {
     try {
@@ -107,6 +72,43 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     }
   };
 
+  const handleGoogleSheetImport = async () => {
+    if (!googleSheetUrl.trim()) {
+      toast({
+        title: "No URL provided",
+        description: "Please enter your Google Sheets URL.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const data = await GoogleSheetsService.importFromSheet(googleSheetUrl);
+      
+      // Import the data
+      if (data.contacts.length > 0) StorageService.saveContacts(data.contacts);
+      if (data.leads.length > 0) StorageService.saveLeads(data.leads);
+      if (data.tasks.length > 0) StorageService.saveTasks(data.tasks);
+      if (data.companies.length > 0) StorageService.saveCompanies(data.companies);
+      
+      onDataUpdate();
+      
+      toast({
+        title: "Import successful",
+        description: `Imported ${data.contacts.length} contacts, ${data.leads.length} leads, ${data.tasks.length} tasks, and ${data.companies.length} companies.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: error instanceof Error ? error.message : "Failed to import from Google Sheet.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -145,34 +147,12 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     };
   };
 
-  const handlePush = async () => {
-    if (!googleSheetUrl) {
-      toast({
-        title: "No URL provided",
-        description: "Please enter your public Google Apps Script URL.",
-        variant: "destructive"
-      });
-      return;
-    }
-    setIsPushing(true);
-
-    const data = {
-      contacts: StorageService.getContacts(),
-      leads: StorageService.getLeads(),
-      tasks: StorageService.getTasks(),
-      companies: StorageService.getCompanies(),
-    };
-
-    await pushToGoogleSheet(googleSheetUrl, data);
-    setIsPushing(false);
-  };
-
   const stats = getStorageStats();
 
   return (
-    <div className="space-y-6 max-w-xl mx-auto">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Data Manager</h1>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Data Manager</h1>
         <p className="text-gray-600">Import, export, and manage your CRM data</p>
       </div>
 
@@ -210,6 +190,77 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
         </CardContent>
       </Card>
 
+      {/* Google Sheets Integration */}
+      <Card className="border-green-200 bg-green-50">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-green-700">
+            <Sheet className="h-5 w-5" />
+            <span>Google Sheets Integration</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-green-700">
+            Import data directly from your Google Sheets. No scripts required - just make your sheet public and paste the link.
+          </p>
+          
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="sheet-url">Google Sheets Public Link</Label>
+              <Input
+                id="sheet-url"
+                type="url"
+                value={googleSheetUrl}
+                onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/your-sheet-id..."
+                className="mt-1"
+              />
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button 
+                onClick={handleGoogleSheetImport} 
+                disabled={isImporting || !googleSheetUrl.trim()}
+                className="flex-1"
+              >
+                {isImporting ? "Importing..." : "Import from Google Sheets"}
+              </Button>
+              <Button 
+                onClick={() => setShowInstructions(!showInstructions)}
+                variant="outline"
+                size="icon"
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {showInstructions && (
+            <Card className="bg-white border-green-200">
+              <CardContent className="pt-4">
+                <div className="text-sm space-y-2 text-gray-700">
+                  <h4 className="font-semibold text-green-700">Setup Instructions:</h4>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Create a new Google Sheet</li>
+                    <li>Create 4 tabs: "Contacts", "Leads", "Tasks", "Companies"</li>
+                    <li>Add headers to each tab (see format below)</li>
+                    <li>Make the sheet public: Share → Anyone with link → Viewer</li>
+                    <li>Copy and paste the sheet URL above</li>
+                  </ol>
+                  
+                  <div className="mt-3 p-2 bg-gray-100 rounded text-xs">
+                    <p><strong>Required Headers:</strong></p>
+                    <p><strong>Contacts:</strong> id, firstName, lastName, email, phone, company, position, status, tags, notes, createdAt, lastContact, source, value</p>
+                    <p><strong>Leads:</strong> id, name, email, phone, company, status, source, value, probability, expectedCloseDate, notes, createdAt, lastActivity, assignedTo</p>
+                    <p><strong>Tasks:</strong> id, title, description, type, priority, status, dueDate, createdAt, completedAt, relatedContactId, relatedLeadId, assignedTo</p>
+                    <p><strong>Companies:</strong> id, name, industry, size, website, phone, email, address, city, state, zipCode, country, notes, createdAt, revenue, employees, status</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Export Data */}
         <Card>
@@ -221,7 +272,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              Download all your CRM data as a JSON file. This includes contacts, leads, tasks, and companies.
+              Download all your CRM data as a JSON file for backup or transfer.
             </p>
             <Button onClick={handleExport} className="w-full flex items-center space-x-2">
               <FileText size={16} />
@@ -235,12 +286,12 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Upload className="h-5 w-5" />
-              <span>Import Data</span>
+              <span>Import JSON Data</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              Import CRM data from a JSON file. This will add to your existing data.
+              Import CRM data from a JSON file. This will replace your existing data.
             </p>
 
             <div>
@@ -299,50 +350,6 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
           </Button>
         </CardContent>
       </Card>
-
-      {/* Data Format Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Format Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm text-gray-600">
-            <p><strong>Export Format:</strong> JSON file containing all contacts, leads, tasks, and companies</p>
-            <p><strong>Import Format:</strong> JSON file with the same structure as exported data</p>
-            <p><strong>Storage:</strong> All data is stored locally in your browser's localStorage</p>
-            <p><strong>Backup:</strong> Regular exports are recommended to prevent data loss</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Cloud Push (Google Sheet) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cloud Push (Google Sheet)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 mb-4">
-            <label className="block font-medium mb-1">Public Google Apps Script URL</label>
-            <input
-              type="text"
-              value={googleSheetUrl}
-              onChange={e => setGoogleSheetUrl(e.target.value)}
-              placeholder="Paste your Google Apps Script POST endpoint"
-              className="w-full border px-2 py-1 rounded"
-            />
-            <div className="text-xs text-gray-500 mb-2">
-              <span>
-                <b>Instructions:</b> Create a Google Sheet, set up a Google Apps Script Web App that accepts POST and writes CSV to the sheet. Paste the script's public endpoint here.<br/>
-                <b>Note:</b> The script must parse the csv_contacts, etc. See documentation for a ready script.
-              </span>
-            </div>
-            <Button onClick={handlePush} disabled={isPushing} className="w-full">
-              {isPushing ? "Pushing..." : "Push to Google Sheet"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
-
