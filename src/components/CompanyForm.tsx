@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Company } from '../types/crm';
 import { StorageService } from '../services/StorageService';
@@ -27,11 +26,11 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
     city: company?.city || '',
     state: company?.state || '',
     zipCode: company?.zipCode || '',
-    country: company?.country || 'USA',
+    country: company?.country || '',
     notes: company?.notes || '',
     revenue: company?.revenue || 0,
     employees: company?.employees || 0,
-    status: company?.status || 'prospect',
+    status: company?.status || 'prospect' as Company['status'],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,7 +52,7 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
       notes: formData.notes,
       revenue: formData.revenue,
       employees: formData.employees,
-      status: formData.status as Company['status'],
+      status: formData.status,
       createdAt: company?.createdAt || new Date().toISOString(),
     };
 
@@ -104,17 +103,17 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="website">Website</Label>
+              <Label htmlFor="size">Company Size</Label>
               <Input
-                id="website"
-                value={formData.website}
-                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                placeholder="www.example.com"
+                id="size"
+                value={formData.size}
+                onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value }))}
+                placeholder="1-10, 11-50, 51-200, etc."
               />
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+              <Select value={formData.status} onValueChange={(value: Company['status']) => setFormData(prev => ({ ...prev, status: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -126,6 +125,16 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="website">Website</Label>
+            <Input
+              id="website"
+              type="url"
+              value={formData.website}
+              onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -148,16 +157,15 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+              />
+            </div>
             <div>
               <Label htmlFor="city">City</Label>
               <Input
@@ -166,6 +174,9 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
                 onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="state">State</Label>
               <Input
@@ -184,39 +195,32 @@ export const CompanyForm = ({ company, onClose }: CompanyFormProps) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Input
+              id="country"
+              value={formData.country}
+              onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="size">Company Size</Label>
-              <Select value={formData.size} onValueChange={(value) => setFormData(prev => ({ ...prev, size: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1-10">1-10 employees</SelectItem>
-                  <SelectItem value="11-50">11-50 employees</SelectItem>
-                  <SelectItem value="51-200">51-200 employees</SelectItem>
-                  <SelectItem value="201-500">201-500 employees</SelectItem>
-                  <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                  <SelectItem value="1000+">1000+ employees</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="employees">Employee Count</Label>
-              <Input
-                id="employees"
-                type="number"
-                value={formData.employees}
-                onChange={(e) => setFormData(prev => ({ ...prev, employees: Number(e.target.value) }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="revenue">Annual Revenue ($)</Label>
+              <Label htmlFor="revenue">Revenue</Label>
               <Input
                 id="revenue"
                 type="number"
                 value={formData.revenue}
                 onChange={(e) => setFormData(prev => ({ ...prev, revenue: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="employees">Employees</Label>
+              <Input
+                id="employees"
+                type="number"
+                value={formData.employees}
+                onChange={(e) => setFormData(prev => ({ ...prev, employees: Number(e.target.value) }))}
               />
             </div>
           </div>

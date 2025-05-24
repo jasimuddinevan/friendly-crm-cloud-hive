@@ -2,12 +2,14 @@
 import { useState } from 'react';
 import { StorageService } from '../services/StorageService';
 import { GoogleSheetsService } from '../services/GoogleSheetsService';
+import { ExcelService } from '../services/ExcelService';
+import { CloudSyncService } from '../services/CloudSyncService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { Download, FileText, Upload, AlertTriangle, Trash2, Database, Sheet, Info } from 'lucide-react';
+import { Download, FileText, Upload, AlertTriangle, Trash2, Database, Sheet, Info, Cloud, CloudOff } from 'lucide-react';
 
 interface DataManagerProps {
   onDataUpdate: () => void;
@@ -16,8 +18,12 @@ interface DataManagerProps {
 export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
   const [importData, setImportData] = useState('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState<string>('');
+  const [syncSheetUrl, setSyncSheetUrl] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const syncConfig = CloudSyncService.getSyncConfig();
 
   const handleExport = () => {
     try {
@@ -45,6 +51,30 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     }
   };
 
+  const handleExcelExport = () => {
+    try {
+      const data = {
+        contacts: StorageService.getContacts(),
+        leads: StorageService.getLeads(),
+        tasks: StorageService.getTasks(),
+        companies: StorageService.getCompanies()
+      };
+      
+      ExcelService.exportToExcel(data);
+
+      toast({
+        title: "Excel export successful",
+        description: "Your CRM data has been downloaded as an Excel file.",
+      });
+    } catch (error) {
+      toast({
+        title: "Excel export failed",
+        description: "There was an error exporting your data to Excel.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleImport = () => {
     if (!importData.trim()) {
       toast({
@@ -67,6 +97,31 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
       toast({
         title: "Import failed",
         description: "Invalid JSON format. Please check your data and try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleExcelImport = async (file: File) => {
+    try {
+      const data = await ExcelService.importFromExcel(file);
+      
+      // Import the data
+      if (data.contacts.length > 0) StorageService.saveContacts(data.contacts);
+      if (data.leads.length > 0) StorageService.saveLeads(data.leads);
+      if (data.tasks.length > 0) StorageService.saveTasks(data.tasks);
+      if (data.companies.length > 0) StorageService.saveCompanies(data.companies);
+      
+      onDataUpdate();
+      
+      toast({
+        title: "Excel import successful",
+        description: `Imported ${data.contacts.length} contacts, ${data.leads.length} leads, ${data.tasks.length} tasks, and ${data.companies.length} companies.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Excel import failed",
+        description: error instanceof Error ? error.message : "Failed to import from Excel file.",
         variant: "destructive"
       });
     }
@@ -109,16 +164,56 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     }
   };
 
+  const handleEnableSync = async () => {
+    if (!syncSheetUrl.trim()) {
+      toast({
+        title: "No URL provided",
+        description: "Please enter your Google Sheets URL for syncing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      await CloudSyncService.enableSync(syncSheetUrl);
+      toast({
+        title: "Cloud sync enabled",
+        description: "Your data will now be automatically synced to Google Sheets every 3 minutes.",
+      });
+    } catch (error) {
+      toast({
+        title: "Sync setup failed",
+        description: "Failed to set up cloud sync. Please check your sheet URL and permissions.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDisableSync = () => {
+    CloudSyncService.disableSync();
+    toast({
+      title: "Cloud sync disabled",
+      description: "Automatic syncing has been turned off.",
+    });
+  };
+
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setImportData(content);
-    };
-    reader.readAsText(file);
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      handleExcelImport(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setImportData(content);
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleClearAll = () => {
@@ -153,7 +248,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Data Manager</h1>
-        <p className="text-gray-600">Import, export, and manage your CRM data</p>
+        <p className="text-gray-600">Import, export, sync, and manage your CRM data</p>
       </div>
 
       {/* Storage Statistics */}
@@ -190,12 +285,66 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
         </CardContent>
       </Card>
 
+      {/* Cloud Sync */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-blue-700">
+            {syncConfig?.isEnabled ? <Cloud className="h-5 w-5" /> : <CloudOff className="h-5 w-5" />}
+            <span>Cloud Sync</span>
+            {syncConfig?.isEnabled && (
+              <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded">Active</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-blue-700">
+            {syncConfig?.isEnabled 
+              ? `Auto-sync is enabled. Data syncs every ${syncConfig.syncInterval} minutes to your Google Sheet.`
+              : "Enable automatic backup to Google Sheets. Your data will be synced every 3 minutes."
+            }
+          </p>
+          
+          {syncConfig?.isEnabled ? (
+            <div className="space-y-3">
+              <div className="text-sm text-gray-600">
+                <p><strong>Sheet URL:</strong> {syncConfig.sheetUrl}</p>
+                <p><strong>Last Sync:</strong> {new Date(syncConfig.lastSync).toLocaleString()}</p>
+              </div>
+              <Button onClick={handleDisableSync} variant="outline" className="w-full">
+                Disable Cloud Sync
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="sync-url">Google Sheets URL for Sync</Label>
+                <Input
+                  id="sync-url"
+                  type="url"
+                  value={syncSheetUrl}
+                  onChange={(e) => setSyncSheetUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/your-sheet-id..."
+                  className="mt-1"
+                />
+              </div>
+              <Button 
+                onClick={handleEnableSync} 
+                disabled={isSyncing || !syncSheetUrl.trim()}
+                className="w-full"
+              >
+                {isSyncing ? "Setting up..." : "Enable Cloud Sync"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Google Sheets Integration */}
       <Card className="border-green-200 bg-green-50">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 text-green-700">
             <Sheet className="h-5 w-5" />
-            <span>Google Sheets Integration</span>
+            <span>Google Sheets Import</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -272,12 +421,18 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              Download all your CRM data as a JSON file for backup or transfer.
+              Download all your CRM data for backup or transfer.
             </p>
-            <Button onClick={handleExport} className="w-full flex items-center space-x-2">
-              <FileText size={16} />
-              <span>Download CRM Data</span>
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={handleExport} className="w-full flex items-center space-x-2">
+                <FileText size={16} />
+                <span>Download as JSON</span>
+              </Button>
+              <Button onClick={handleExcelExport} variant="outline" className="w-full flex items-center space-x-2">
+                <FileText size={16} />
+                <span>Download as Excel</span>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -286,20 +441,20 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Upload className="h-5 w-5" />
-              <span>Import JSON Data</span>
+              <span>Import Data</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              Import CRM data from a JSON file. This will replace your existing data.
+              Import CRM data from JSON or Excel files. This will replace your existing data.
             </p>
 
             <div>
-              <Label htmlFor="file-import">Upload JSON File</Label>
+              <Label htmlFor="file-import">Upload File (JSON/Excel)</Label>
               <Input
                 id="file-import"
                 type="file"
-                accept=".json"
+                accept=".json,.xlsx,.xls"
                 onChange={handleFileImport}
                 className="mt-1"
               />
@@ -322,7 +477,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
               disabled={!importData.trim()}
             >
               <Upload size={16} />
-              <span>Import Data</span>
+              <span>Import JSON Data</span>
             </Button>
           </CardContent>
         </Card>

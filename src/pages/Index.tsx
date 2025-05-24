@@ -9,6 +9,7 @@ import { DataManager } from '../components/DataManager';
 import { Navigation } from '../components/Navigation';
 import { Contact, Lead, Task, Company } from '../types/crm';
 import { StorageService } from '../services/StorageService';
+import { CloudSyncService } from '../services/CloudSyncService';
 import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -37,6 +38,9 @@ const Index = () => {
     };
 
     loadData();
+    
+    // Initialize cloud sync if enabled
+    CloudSyncService.initializeSync();
   }, []);
 
   const handleDataUpdate = () => {
