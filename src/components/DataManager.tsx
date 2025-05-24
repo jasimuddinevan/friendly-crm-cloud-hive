@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { StorageService } from '../services/StorageService';
 import { GoogleSheetsService } from '../services/GoogleSheetsService';
@@ -86,12 +85,55 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     }
 
     try {
-      StorageService.importAllData(importData);
+      const data = JSON.parse(importData);
+      
+      // Get existing data
+      const existingContacts = StorageService.getContacts();
+      const existingLeads = StorageService.getLeads();
+      const existingTasks = StorageService.getTasks();
+      const existingCompanies = StorageService.getCompanies();
+
+      // Merge new data with existing data
+      let addedCount = 0;
+      
+      if (data.contacts && Array.isArray(data.contacts)) {
+        const newContacts = data.contacts.filter((newContact: any) => 
+          !existingContacts.some(existing => existing.id === newContact.id)
+        );
+        StorageService.saveContacts([...existingContacts, ...newContacts]);
+        addedCount += newContacts.length;
+      }
+      
+      if (data.leads && Array.isArray(data.leads)) {
+        const newLeads = data.leads.filter((newLead: any) => 
+          !existingLeads.some(existing => existing.id === newLead.id)
+        );
+        StorageService.saveLeads([...existingLeads, ...newLeads]);
+        addedCount += newLeads.length;
+      }
+      
+      if (data.tasks && Array.isArray(data.tasks)) {
+        const newTasks = data.tasks.filter((newTask: any) => 
+          !existingTasks.some(existing => existing.id === newTask.id)
+        );
+        StorageService.saveTasks([...existingTasks, ...newTasks]);
+        addedCount += newTasks.length;
+      }
+      
+      if (data.companies && Array.isArray(data.companies)) {
+        const newCompanies = data.companies.filter((newCompany: any) => 
+          !existingCompanies.some(existing => existing.id === newCompany.id)
+        );
+        StorageService.saveCompanies([...existingCompanies, ...newCompanies]);
+        addedCount += newCompanies.length;
+      }
+
       onDataUpdate();
       setImportData('');
+      
       toast({
-        title: "Data imported",
-        description: "Your CRM data has been successfully imported.",
+        title: "Data imported successfully",
+        description: `Added ${addedCount} new records. Existing data was preserved.`,
       });
     } catch (error) {
       toast({
@@ -106,17 +148,52 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     try {
       const data = await ExcelService.importFromExcel(file);
       
-      // Import the data
-      if (data.contacts.length > 0) StorageService.saveContacts(data.contacts);
-      if (data.leads.length > 0) StorageService.saveLeads(data.leads);
-      if (data.tasks.length > 0) StorageService.saveTasks(data.tasks);
-      if (data.companies.length > 0) StorageService.saveCompanies(data.companies);
+      // Get existing data
+      const existingContacts = StorageService.getContacts();
+      const existingLeads = StorageService.getLeads();
+      const existingTasks = StorageService.getTasks();
+      const existingCompanies = StorageService.getCompanies();
+
+      // Merge new data with existing data, avoiding duplicates
+      let addedCount = 0;
+      
+      if (data.contacts.length > 0) {
+        const newContacts = data.contacts.filter(newContact => 
+          !existingContacts.some(existing => existing.id === newContact.id)
+        );
+        StorageService.saveContacts([...existingContacts, ...newContacts]);
+        addedCount += newContacts.length;
+      }
+      
+      if (data.leads.length > 0) {
+        const newLeads = data.leads.filter(newLead => 
+          !existingLeads.some(existing => existing.id === newLead.id)
+        );
+        StorageService.saveLeads([...existingLeads, ...newLeads]);
+        addedCount += newLeads.length;
+      }
+      
+      if (data.tasks.length > 0) {
+        const newTasks = data.tasks.filter(newTask => 
+          !existingTasks.some(existing => existing.id === newTask.id)
+        );
+        StorageService.saveTasks([...existingTasks, ...newTasks]);
+        addedCount += newTasks.length;
+      }
+      
+      if (data.companies.length > 0) {
+        const newCompanies = data.companies.filter(newCompany => 
+          !existingCompanies.some(existing => existing.id === newCompany.id)
+        );
+        StorageService.saveCompanies([...existingCompanies, ...newCompanies]);
+        addedCount += newCompanies.length;
+      }
       
       onDataUpdate();
       
       toast({
         title: "Excel import successful",
-        description: `Imported ${data.contacts.length} contacts, ${data.leads.length} leads, ${data.tasks.length} tasks, and ${data.companies.length} companies.`,
+        description: `Added ${addedCount} new records. Existing data was preserved.`,
       });
     } catch (error) {
       toast({
@@ -141,17 +218,52 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
     try {
       const data = await GoogleSheetsService.importFromSheet(googleSheetUrl);
       
-      // Import the data
-      if (data.contacts.length > 0) StorageService.saveContacts(data.contacts);
-      if (data.leads.length > 0) StorageService.saveLeads(data.leads);
-      if (data.tasks.length > 0) StorageService.saveTasks(data.tasks);
-      if (data.companies.length > 0) StorageService.saveCompanies(data.companies);
+      // Get existing data
+      const existingContacts = StorageService.getContacts();
+      const existingLeads = StorageService.getLeads();
+      const existingTasks = StorageService.getTasks();
+      const existingCompanies = StorageService.getCompanies();
+
+      // Merge new data with existing data, avoiding duplicates
+      let addedCount = 0;
+      
+      if (data.contacts.length > 0) {
+        const newContacts = data.contacts.filter(newContact => 
+          !existingContacts.some(existing => existing.id === newContact.id)
+        );
+        StorageService.saveContacts([...existingContacts, ...newContacts]);
+        addedCount += newContacts.length;
+      }
+      
+      if (data.leads.length > 0) {
+        const newLeads = data.leads.filter(newLead => 
+          !existingLeads.some(existing => existing.id === newLead.id)
+        );
+        StorageService.saveLeads([...existingLeads, ...newLeads]);
+        addedCount += newLeads.length;
+      }
+      
+      if (data.tasks.length > 0) {
+        const newTasks = data.tasks.filter(newTask => 
+          !existingTasks.some(existing => existing.id === newTask.id)
+        );
+        StorageService.saveTasks([...existingTasks, ...newTasks]);
+        addedCount += newTasks.length;
+      }
+      
+      if (data.companies.length > 0) {
+        const newCompanies = data.companies.filter(newCompany => 
+          !existingCompanies.some(existing => existing.id === newCompany.id)
+        );
+        StorageService.saveCompanies([...existingCompanies, ...newCompanies]);
+        addedCount += newCompanies.length;
+      }
       
       onDataUpdate();
       
       toast({
         title: "Import successful",
-        description: `Imported ${data.contacts.length} contacts, ${data.leads.length} leads, ${data.tasks.length} tasks, and ${data.companies.length} companies.`,
+        description: `Added ${addedCount} new records from Google Sheets. Existing data was preserved.`,
       });
     } catch (error) {
       toast({
@@ -349,7 +461,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-green-700">
-            Import data directly from your Google Sheets. No scripts required - just make your sheet public and paste the link.
+            Import data directly from your Google Sheets. Data will be added to existing records without removing anything.
           </p>
           
           <div className="space-y-3">
@@ -446,7 +558,7 @@ export const DataManager = ({ onDataUpdate }: DataManagerProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              Import CRM data from JSON or Excel files. This will replace your existing data.
+              Import CRM data from JSON or Excel files. New records will be added to existing data.
             </p>
 
             <div>
