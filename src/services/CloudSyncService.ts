@@ -25,7 +25,7 @@ export class CloudSyncService {
 
   static async enableSync(sheetUrl: string): Promise<void> {
     try {
-      // Test the connection first
+      // Test the connection first by doing an initial sync
       await this.syncToSheet(sheetUrl);
       
       const config: SyncConfig = {
@@ -84,29 +84,31 @@ export class CloudSyncService {
   }
 
   private static async syncToSheet(sheetUrl: string): Promise<void> {
-    // Note: This is a placeholder for the actual sync implementation
-    // In a real-world scenario, you would need to use Google Sheets API
-    // with proper authentication to write data to sheets
-    
-    const data = {
-      contacts: StorageService.getContacts(),
-      leads: StorageService.getLeads(),
-      tasks: StorageService.getTasks(),
-      companies: StorageService.getCompanies()
-    };
+    try {
+      const data = {
+        contacts: StorageService.getContacts(),
+        leads: StorageService.getLeads(),
+        tasks: StorageService.getTasks(),
+        companies: StorageService.getCompanies()
+      };
 
-    console.log('Syncing data to sheet:', {
-      url: sheetUrl,
-      contacts: data.contacts.length,
-      leads: data.leads.length,
-      tasks: data.tasks.length,
-      companies: data.companies.length,
-      timestamp: new Date().toISOString()
-    });
+      console.log('Attempting to sync data to sheet:', {
+        url: sheetUrl,
+        contacts: data.contacts.length,
+        leads: data.leads.length,
+        tasks: data.tasks.length,
+        companies: data.companies.length,
+        timestamp: new Date().toISOString()
+      });
 
-    // For now, we'll just log the sync attempt
-    // In production, you would implement actual Google Sheets API calls here
-    return Promise.resolve();
+      // Use GoogleSheetsService to export data to the sheet
+      await GoogleSheetsService.exportToSheet(sheetUrl, data);
+      
+      console.log('Successfully synced data to Google Sheets');
+    } catch (error) {
+      console.error('Failed to sync to sheet:', error);
+      throw error;
+    }
   }
 
   static initializeSync(): void {
